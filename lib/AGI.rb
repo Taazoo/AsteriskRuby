@@ -11,7 +11,7 @@
         * Redistributions in binary form must reproduce the above copyright
   notice, this list of conditions and the following disclaimer in the
   documentation and/or other materials provided with the distribution.
-        * Neither the name of Vonage Holdings nor the names of its       
+        * Neither the name of Vonage Holdings nor the names of its
   contributors may be used to endorse or promote products derived from this
   software without specific prior written permission.
 
@@ -28,14 +28,14 @@
   POSSIBILITY OF SUCH DAMAGE.
 
   Author: Michael Komitee <mkomitee@gmail.com>
-  
+
 The AGI object can be used to interact with an Asterisk. It can be used within the AGIServer framework, or independantly. Simply instantiate an AGI object and pass it input and output IO objects. Asterisk extensions can exec an agi script (in asterisk parlance, agi or deadagi), in which case you'll want to use stdin and stdout, or asterisk extensions can connect to a daemonized agi server (in asterisk parlance, fagi) and you'd want to use a tcp socket.
-  
+
   agi = AGI.new(:input => STDIN, :output => STDOUT)
   agi.init
   agi.answer
   agi.hangup
-  
+
 Note, all agi instances will be uninitialized. The initialization process of an agi channel must be performed before any other interaction with the channel can be accomplished.
 =end
 
@@ -65,14 +65,14 @@ class AGI
     @last_response  = nil
     @initialized = false
   end
-  
+
 #Causes Asterisk to answer the channel.
 #
 #Returns an AGIResponse object.
   def answer
     response = AGIResponse.new
     command_str = "ANSWER"
-    begin      
+    begin
       response.native = execute(command_str)
     rescue AGITimeoutError, AGICommandError, AGIHangupError
       raise
@@ -97,7 +97,7 @@ class AGI
             result = stream_file(file, digits)
           rescue AGITimeoutError, AGICommandError, AGIHangupError, AGIChannelError
             raise
-          end          
+          end
           return result unless result.success?
           return result if result.data
         end
@@ -129,13 +129,13 @@ class AGI
 #Queries Asterisk for the status of the named channel. If no channel is named, defaults to the current channel.
 #
 #Returns an AGIResponse object with data signifying the status of the channel:
-#- 0, 'DOWN, UNAVAILABLE', Channel is down and available 
-#- 1, 'DOWN, RESERVED', Channel is down, but reserved 
-#- 2, 'OFF HOOK', Channel is off hook 
-#- 3, 'DIGITS DIALED', Digits (or equivalent) have been dialed 
-#- 4, 'LINE RINGING', Line is ringing 
-#- 5, 'REMOTE RINGING', Remote end is ringing 
-#- 6, 'UP', Line is up 
+#- 0, 'DOWN, UNAVAILABLE', Channel is down and available
+#- 1, 'DOWN, RESERVED', Channel is down, but reserved
+#- 2, 'OFF HOOK', Channel is off hook
+#- 3, 'DIGITS DIALED', Digits (or equivalent) have been dialed
+#- 4, 'LINE RINGING', Line is ringing
+#- 5, 'REMOTE RINGING', Remote end is ringing
+#- 6, 'UP', Line is up
 #- 7, 'BUSY', Line is busy
   def channel_status(channel=nil)
     response = AGIResponse.new
@@ -144,7 +144,7 @@ class AGI
     else
       command_str = "CHANNEL STATUS #{channel}"
     end
-    begin      
+    begin
       response.native = execute(command_str)
     rescue AGITimeoutError, AGICommandError, AGIHangupError
       raise
@@ -182,7 +182,7 @@ class AGI
     if pausechar.nil?
       command_str = "CONTROL STREAM FILE file digits skipms ffchar rewchar"
     else
-      command_str = "CONTROL STREAM FILE file digits skipms ffchar rewchar pausechar"  
+      command_str = "CONTROL STREAM FILE file digits skipms ffchar rewchar pausechar"
     end
     begin
       response.native = execute(command_str)
@@ -272,7 +272,7 @@ class AGI
       response.native = execute(command_str)
     rescue AGITimeoutError, AGICommandError, AGIHangupError
       raise
-    end    
+    end
     if response.native == -1 then
       raise AGIChannelError.new(@last_response, "Channel Failure in (#{command_str})")
     elsif response.native == 1 then
@@ -280,7 +280,7 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to execute the given Asterisk Application by sending the command "EXEC" to Asterisk using the AGI
 #
 #Returns an AGIResponse.
@@ -305,7 +305,7 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to collect DTMF digits from the channel while playing an audio file. Optionally accepts a timeout option (in seconds) and a maximum number of digits to collect.
 #
 #Returns an AGIResponse with data available which denotes the DTMF digits provided by the channel.
@@ -318,7 +318,7 @@ class AGI
     else
       command_str = "GET DATA #{file} #{(timeout.to_i * 1000)} #{max_digits}"
     end
-    begin      
+    begin
       response.native = execute(command_str)
     rescue AGITimeoutError, AGICommandError, AGIHangupError
       raise
@@ -401,7 +401,7 @@ class AGI
 
 #Signals Asterisk to hangup the requested channel. If no channel is provided, defaults to the current channel.
 #
-#Returns an AGIResponse. 
+#Returns an AGIResponse.
   def hangup(channel=nil)
     response = AGIResponse.new
     if channel.nil? then
@@ -421,13 +421,13 @@ class AGI
     end
     return response
   end
-  
+
 #Initializes the channel by getting all variables provided by Asterisk as it initiates the connection. These values are then stored in the instance variable @channel_params, a Hash object. While initializing the channel, the IO object(s) provided to new as :input and :output are set to operate synchronously.
 #
 #Note, a channel can only be initialized once. If the AGI is being initialized a second time, this will throw an AGIInitializeError. If this is desired functionality, please see the reinit method.
   def init
     if @initialized
-      raise AGIInitializeError.new(nil, "Tried to init previously initialized channel. If this is desired, use reinit()")      
+      raise AGIInitializeError.new(nil, "Tried to init previously initialized channel. If this is desired, use reinit()")
     end
     begin
       @input.sync = true
@@ -439,7 +439,7 @@ class AGI
           if @channel_params.has_key?($1) then
             @logger.warn{"AGI Got Duplicate Channel Parameter for #{$1} (was \"#{@channel_params[$1]}\" reset to \"#{$2})\""}
           end
-          @channel_params[$1] = $2          
+          @channel_params[$1] = $2
           @logger.debug{"AGI Got Channel Parameter #{$1} = #{$2}"}
         end
       end
@@ -451,8 +451,8 @@ class AGI
       end
     end
     @initialized = true
-  end  
-  
+  end
+
 #Signals Asterisk to ... do nothing
 #
 #Returns an AGIResponse. (just in case you want to make sure asterisk successfully didnt do anything. Don't ask me, I just implement them)
@@ -500,7 +500,7 @@ class AGI
 
 #Signals Asterisk to query the channel to provide audio data to record into a file. Asterisk will record until certain digits are provided as DTMF, or the operation times out, or silence is detected for a second timeout. Can optionally cause asterisk to send a beep to the channel to signal the user the intention of recording sound. By default, there is no timeout,no silence detection, and no beep.
 #
-#Returns an AGIResponse. 
+#Returns an AGIResponse.
   def record_file(filename, format, digits, timeout=-1, beep=false, silence=nil)
     beep_str = ''
     if ( beep == true ) then
@@ -527,8 +527,8 @@ class AGI
     end
     return response
   end
-  
-  
+
+
 #Initializes the channel by getting all variables provided by Asterisk as it initiates the connection. These values are then stored in the instance variable @channel_params, a Hash object. While initializing the channel, the IO object(s) provided to new as :input and :output are set to operate synchronously.
 #
 #Note, unlike the init method, this can be called on an AGI object multiple times. Realize, however, that each time you do, the channel will have to provide a set of initialization data, and all previously stored channel parameters will be forgotten.
@@ -536,9 +536,9 @@ class AGI
     @initialized = false
     @channel_params = {}
     @last_response  = nil
-    init    
+    init
   end
- 
+
 #Signals Asterisk to announce the string provided as a series of characters If digits are provided as well, will allow the user to terminate the announcement if one of the digits are provided by DTMF.
 #
 #Returns an AGIResponse including the DTMF digit provided by the channel.
@@ -560,7 +560,7 @@ class AGI
     end
     return response
   end
- 
+
 #Signals Asterisk to announce the given date. If digits are provided as well, will allow the user to terminate the announcement if one of the digits are provided by DTMF. Can accept either a Time object or an integer designation of the number of seconds since 00:00:00 January 1, 1970, Coordinated Universal Time (UTC). Defaults to now.
 #
 #Returns an AGIResponse including the DTMF digit provided by the channel, if any are.
@@ -652,7 +652,7 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to announce the string provided as a series of characters. If digits are provided as well, will allow the user to terminate the announcement if one of the digits are provided by DTMF.
 #
 #Returns an AGIResponse including the DTMF digit provided by the channel.
@@ -696,10 +696,10 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to transfer an image across the channel.
 #
-#Returns an AGIResponse. 
+#Returns an AGIResponse.
 #
 #Please note, at present Asterisk returns the same value to the AGI if the image is sent and if the channel does not support image transmission. The AGIResponse, therefore, reflects the same. AGIResponse.success? will be true for both successful transmission and for channel-doesn't support.
   def send_image(image)
@@ -720,7 +720,7 @@ class AGI
 
 #Signals Asterisk to transfer text across the channel.
 #
-#Returns an AGIResponse. 
+#Returns an AGIResponse.
 #
 #Please note, at present Asterisk returns the same value to the AGI if the text is sent and if the channel does not support text transmission. The AGIResponse, therefore, reflects the same. AGIResponse.success? will be true for both successful transmission and for channel-doesn't support.
   def send_text(text)
@@ -757,7 +757,7 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to set the callerid on the channel.
 #
 #Returns an AGIResponse.
@@ -776,7 +776,7 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to set the context for the channel upon AGI completion.
 #
 #Returns an AGIResponse.
@@ -793,9 +793,9 @@ class AGI
     elsif response.native == 0
       response.success = true
     end
-    return response    
+    return response
   end
-  
+
 #Signals Asterisk to set the extension for the channel upon AGI completion.
 #
 #Returns an AGIResponse.
@@ -812,7 +812,7 @@ class AGI
     elsif response.native == 0
       response.success = true
     end
-    return response    
+    return response
   end
 
 #Signals Asterisk to enable or disable music-on-hold for the channel. If music_class is provided, it will select music from the apropriate music class, if it is not provided, asterisk will use music from the default class. The toggle option can either be 'on' or 'off'.
@@ -838,9 +838,9 @@ class AGI
     elsif response.native == 0
       response.success = true
     end
-    return response    
+    return response
   end
-  
+
 #Signals Asterisk to set the priority for the channel upon AGI completion.
 #
 #Returns an AGIResponse.
@@ -857,7 +857,7 @@ class AGI
     elsif response.native == 0
       response.success = true
     end
-    return response    
+    return response
   end
 
 #Signals Asterisk to set the contents of the requested channel variable.
@@ -878,7 +878,7 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to stream the given audio file to the channel starting at an optional offset until either the entire file has been streamed or the user provides one of a set of DTMF digits.
 #
 #Returns an AGIResponse including the DTMF digit provided by the channel.
@@ -928,8 +928,8 @@ class AGI
       response.success = true
     end
     return response
-  end  
-  
+  end
+
 #Signals Asterisk to log the given message using the given log level to asterisk's verbose log.
 #
 #Returns an AGIResponse.
@@ -948,7 +948,7 @@ class AGI
     end
     return response
   end
-  
+
 #Signals Asterisk to collect a single DTMF digit from the channel while waiting for an optional timeout.
 #
 #Returns an AGIResponse with data available which denotes the DTMF digits provided by the channel.
@@ -970,7 +970,7 @@ class AGI
     end
     return response
   end
-  
+
   private
   def execute(command_str)
     @last_response = nil
@@ -981,7 +981,7 @@ class AGI
     rescue AGIHangupError => error
       @logger.warn{"Received AGI Hangup Error in command (#{command_str}): #{error.to_s}"}
       raise
-    rescue AGICommandError => error      
+    rescue AGICommandError => error
       @logger.warn{"Received AGI Command Error in command (#{command_str}): #{error.to_s}"}
       raise
     rescue AGITimeoutError => error
@@ -991,20 +991,20 @@ class AGI
       return response
     end
   end
-  
+
   def _execcommand(command_str)
     # returns nothing, merely sends a command string to asterisk
     @logger.debug{"AGI Sent to Asterisk: #{command_str}"}
     @output.print("#{command_str}\n")
     return nil
   end
-  
+
   def _readresponse
     # returns the data returned by asterisk
     begin
       response = @input.gets.chomp
     rescue NoMethodError
-      # NoMethodError here implies chomp called on nil result of gets, 
+      # NoMethodError here implies chomp called on nil result of gets,
       # reraise as Hangup
       raise AGIHangupError.new(nil, "Channel Hungup during command execution")
     rescue Errno::ECONNRESET
@@ -1014,7 +1014,7 @@ class AGI
     end
     return response
   end
-  
+
   def _checkresult(response)
     # returns what will be interpreted as asterisks native response
     if response.nil? then
@@ -1031,7 +1031,7 @@ class AGI
       raise AGICommandError.new(@last_response, "Invalid or nil response from Asterisk: \"#{response}\"")
     end
   end
-  
+
   def parse_response
     if @last_response =~ %r{\((.*)\)} then
       return $1
@@ -1054,7 +1054,7 @@ end
         * Redistributions in binary form must reproduce the above copyright
   notice, this list of conditions and the following disclaimer in the
   documentation and/or other materials provided with the distribution.
-        * Neither the name of Vonage Holdings nor the names of its       
+        * Neither the name of Vonage Holdings nor the names of its
   contributors may be used to endorse or promote products derived from this
   software without specific prior written permission.
 
