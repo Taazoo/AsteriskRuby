@@ -62,7 +62,7 @@ class AGIRouter
                 :options    => @options
               }
 
-    if controller = get_controller(@controller)
+    if controller = get_controller("#{@controller}Controller".classify)
       if check_controller(controller)
         if check_route(controller, @method)
           @@logger.info{"AGIRouter Routing Request to #{@controller} #{@method} by #{@uri}"}
