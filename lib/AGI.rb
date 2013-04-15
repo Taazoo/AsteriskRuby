@@ -1004,6 +1004,7 @@ class AGI
     begin
       response = @input.gets.chomp
       if response[0..2][/511/]
+        @logger.debug{"AGI Received from Asterisk: #{response}"}
         raise AGIHangupError.new(nil, "Channel Hungup during command execution")
       end
     rescue NoMethodError
