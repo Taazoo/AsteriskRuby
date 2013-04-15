@@ -1003,6 +1003,9 @@ class AGI
     # returns the data returned by asterisk
     begin
       response = @input.gets.chomp
+      if response[0..2][/511/]
+        raise AGIHangupError.new(nil, "Channel Hungup during command execution")
+      end
     rescue NoMethodError
       # NoMethodError here implies chomp called on nil result of gets,
       # reraise as Hangup
