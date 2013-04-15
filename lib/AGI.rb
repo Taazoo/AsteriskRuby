@@ -1003,7 +1003,7 @@ class AGI
     # returns the data returned by asterisk
     begin
       response = @input.gets.chomp
-      if response[0..2][/511/]
+      if response[/511/]
         @logger.debug{"AGI Received from Asterisk: #{response}"}
         raise AGIHangupError.new(nil, "Channel Hungup during command execution")
       end
