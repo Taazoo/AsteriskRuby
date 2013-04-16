@@ -66,55 +66,67 @@ class AGIServer
   #2. Worker Threads: The Worker Thread is also fairly simple. It loops jobs_per_worker times, and each time, dequeues from the worker_queue. If the result is nil, it exits, otherwise, it interacts with the client socket, either yielding to the aforementioned supplied block or routing to the AGIRoutes. If a Worker Thread is instantiated, it will continue to process requests until it processes jobs_per_worker jobs or the server is stopped.
   #3. Monitor Thread: The Monitor Thread is the most complex of the threads at use. It instantiates Worker Threads if at any time it detects that there are fewer workers than min_workers, and if at any time it detects that the worker_queue length is greater than zero while there are fewer than max_workers.
   def run(&block)
-    @logger.info{"AGIServer Initializing Monitor Thread"}
+    @logger.info "Initializing Monitor Thread"
+
     @monitor = Thread.new do
       poll = 0
       while ! @shutdown do
         poll += 1
-        if (@workers.length < @max_workers and @worker_queue.length > 0) or ( @workers.length < @min_workers ) then
-          @logger.info{"AGIServer Starting Worker Thread to handle requests"}
+
+        if @worker_queue.length.zero?
+          sleep(1)
+          next
+        end
+
+
+
+        worker_check = (@workers.length < @max_workers)
+
+
+        if worker_check || @workers.length < @min_workers
+          @logger.info "Starting worker thread to handle requests"
 
           #Begin Worker Thread
-          worker_thread = Thread.new do
-            @jobs_per_worker.times do
-              client = @worker_queue.deq
-              break if client.nil?
-              @logger.debug{"AGIServer Worker received Connection"}
-              agi = AGI.new({ :input => client, :output => client, :logger => @logger })
-              begin
-                agi.init
-                params = @params
-                if block.nil?
-                  router = AGIRouter.new(agi.channel_params['request'])
-                  router.route(agi, params)
-                else
-                  if block.arity == 2
-                    yield(agi, params)
-                  elsif block.arity == 1
-                    yield(agi)
-                  end
-                end
-              rescue AGIHangupError => error
-                @logger.error{"AGIServer Worker Caught Unhandled Hangup: #{error}"}
-              rescue AGIError => error
-                @logger.error{"AGIServer Worker Caught Unhandled Exception: #{error.class} #{error.to_s}"}
-              rescue Exception => error
-                @logger.error{"AGIServer Worker Got Unhandled Exception: #{error.class} #{error}"}
-              ensure
-                client.close
-                @logger.debug{"AGIServer Worker done with Connection"}
-              end
-            end
-            @workers.delete(Thread.current)
-            @logger.info{"AGIServer Worker handled last Connection, terminating"}
-          end
-          #End Worker Thread
 
-          @workers << worker_thread
+          pid = Process.fork {
+            $0 = "#{$0} Worker"
+
+            client = @worker_queue.deq
+            return if client.nil?
+
+            @logger.debug "Worker received Connection"
+            agi = AGI.new({ :input => client, :output => client, :logger => @logger })
+            begin
+              agi.init
+              params = @params
+              if block.nil?
+                router = AGIRouter.new(agi.channel_params['request'])
+                router.route(agi, params)
+              else
+                if block.arity == 2
+                  yield(agi, params)
+                elsif block.arity == 1
+                  yield(agi)
+                end
+              end
+            rescue AGIHangupError => error
+              @logger.error "Worker caught unhandled hangup: #{error}"
+            rescue AGIError,Exception => error
+              @logger.error "Caught unhandled exception: #{error.class} #{error}"
+              @logger.error error.backtrace.join("\n")
+            ensure
+              client.close
+              @logger.debug "Worker done with Connection"
+            end
+
+            @logger.info "Worker handled last Connection, terminating"
+          } # Process.fork
+          @workers << pid
+
           next #Short Circuit back without a sleep in case we need more threads for load
         end
-        if @stats and poll % 10 == 0 then
-          @logger.debug{"AGIServer #{@workers.length} active workers, #{@worker_queue.length} jobs waiting"}
+        if @stats && (poll % 10).zero?
+          @logger.debug "#{@workers.length} active workers, #{@worker_queue.length} jobs waiting"
         end
         sleep 1
       end
@@ -128,7 +140,7 @@ class AGIServer
     @listener = Thread.new do
       begin
         while( client = @listen_socket.accept )
-          @logger.debug{"AGIServer Listener received Connection Request"}
+          @logger.debug("Listener received Connection Request")
           @worker_queue.enq(client)
         end
       rescue IOError
@@ -140,16 +152,23 @@ class AGIServer
 
   #Will  wait for the Monitor and Listener threads to join. The Monitor thread itself will wait for all of it's instantiated Worker threads to join.
   def join
-    @listener.join && @logger.debug{"AGIServer Listener Thread closed"}
-    @monitor.join && @logger.debug{"AGIServer Monitor Thread closed"}
+    @listener.join && @logger.debug("Listener Thread closed")
+    @monitor.join  && @logger.debug("AGIServer Monitor Thread closed")
   end
   alias_method :finish, :join
 
   #Closes the listener socket, so that no new requests will be accepted. Signals to the Monitor thread to shutdown it's Workers when they're done with their current clients.
   def shutdown
-    @logger.info{"AGIServer Shutting down gracefully"}
-    @listen_socket.close && @logger.info{"AGIServer No longer accepting connections"}
-    @shutdown = true && @logger.info{"AGIServer Signaling Monitor to close after active sessions complete"}
+    @logger.info("Shutting down gracefully")
+    @listen_socket.close && @logger.info("AGIServer No longer accepting connections")
+    @shutdown = true && @logger.info("AGIServer Signaling Monitor to close after active sessions complete")
+
+    @workers.each do |worker|
+      Process.kill("HUP", pid)
+    end
+
+    rescue => e
+      Process.exit!
   end
   alias_method :stop, :shutdown
 

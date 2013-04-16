@@ -11,7 +11,7 @@
         * Redistributions in binary form must reproduce the above copyright
   notice, this list of conditions and the following disclaimer in the
   documentation and/or other materials provided with the distribution.
-        * Neither the name of Vonage Holdings nor the names of its       
+        * Neither the name of Vonage Holdings nor the names of its
   contributors may be used to endorse or promote products derived from this
   software without specific prior written permission.
 
@@ -34,11 +34,47 @@ The AGIRoute class is meant to be subclassed and have various methods added whic
 #The AGIRoute class is meant to be subclassed and have various methods added which will work like rails controller actions, being called by the router when agi requests to certain similarly named uri's occur. For example, an asterisk request to the agi with a url of agi://server:port/TestRoutes/test/?foo=bar would execute the test action in the TestRoutes agi route subclass.
 class AGIRoute
   attr_reader :agi, :params, :request
+
+  class << self
+
+    def initialize_filter_chain(filter_method)
+
+    end
+
+    def filter_chain(filter_method)
+      chain  = filter_method.to_sym
+      @filter_chain        ||= {}
+      @filter_chain[chain] ||= []
+      @filter_chain[chain]
+    end
+
+    def before_filter(method_sym)
+      filter_chain(:before).push method_sym
+    end
+
+    def after_filter
+      filter_chain(:after).push method_sym
+    end
+
+  end
+
   def initialize(data)
     @agi      = data[:agi]
     @params   = data[:params]
     @request  = data[:request]
   end
+
+  def run_filter_chain(chain)
+    result = true
+    active_filters = self.class.filter_chain(chain)
+    active_filters.each do |filter|
+      result = self.method(filter).call()
+      if result == false
+        raise AGIFilterHalt.new("Filter chain halted execution: #{filter}")
+      end
+    end
+  end
+
 end
 
 =begin
@@ -54,7 +90,7 @@ end
         * Redistributions in binary form must reproduce the above copyright
   notice, this list of conditions and the following disclaimer in the
   documentation and/or other materials provided with the distribution.
-        * Neither the name of Vonage Holdings nor the names of its       
+        * Neither the name of Vonage Holdings nor the names of its
   contributors may be used to endorse or promote products derived from this
   software without specific prior written permission.
 

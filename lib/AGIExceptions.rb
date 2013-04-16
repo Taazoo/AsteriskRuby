@@ -11,7 +11,7 @@
         * Redistributions in binary form must reproduce the above copyright
   notice, this list of conditions and the following disclaimer in the
   documentation and/or other materials provided with the distribution.
-        * Neither the name of Vonage Holdings nor the names of its       
+        * Neither the name of Vonage Holdings nor the names of its
   contributors may be used to endorse or promote products derived from this
   software without specific prior written permission.
 
@@ -59,8 +59,21 @@ class AGIError < Exception
   end
   def to_str
     self.to_s
-  end  
+  end
 end
+
+class AGIFilterHalt < Exception
+  def initialize(str)
+    @message = str
+  end
+  def to_s
+    @message
+  end
+  def to_str
+    self.to_s
+  end
+end
+
 
 #AGIHangupError signifies that the Asterisk Channel associated with the AGI has been hung up, unexpectedly. It inherits from AGIError.
 class AGIHangupError < AGIError
@@ -120,7 +133,7 @@ end
         * Redistributions in binary form must reproduce the above copyright
   notice, this list of conditions and the following disclaimer in the
   documentation and/or other materials provided with the distribution.
-        * Neither the name of Vonage Holdings nor the names of its       
+        * Neither the name of Vonage Holdings nor the names of its
   contributors may be used to endorse or promote products derived from this
   software without specific prior written permission.
 

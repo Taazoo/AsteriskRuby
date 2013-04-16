@@ -49,39 +49,67 @@ class AGIRouter
   end
 
   #Can be used to reset the AGIRouter classes logger object.
-  def AGIRouter.logger(logger)
+  def self.logger(logger)
     @@logger = logger
   end
 
   #Takes an agi, and an optional parameters hash, and attempts to route to the requested method. If the method does not exist or is private, uses the agi to change the channel extension to invalid and the priority to 1.
   def route(agi, params=nil)
-    request = { :uri        => @uri,
-                :controller => @controller,
-                :method     => @method,
-                :id         => @id,
-                :options    => @options
-              }
+    request = {
+      :uri        => @uri,
+      :controller => @controller,
+      :method     => @method,
+      :id         => @id,
+      :options    => @options
+    }
 
-    if controller = get_controller("#{@controller}Controller".classify)
-      if check_controller(controller)
-        if check_route(controller, @method)
-          @@logger.info{"AGIRouter Routing Request to #{@controller} #{@method} by #{@uri}"}
-          controller.new({:agi => agi, :params => params, :request => request}).method(@method).call()
-        else
-          @@logger.warn{"AGIRouter was asked to route a call to controller with unroutable method #{@controller} #{@method}"}
-          agi.set_extension('i')
-          agi.set_priority('1')
-        end
-      else
-        @@logger.warn{"AGIRouter was asked to route a call to an invalid controller #{@controller}"}
-        agi.set_extension('i')
-        agi.set_priority('1')
-      end
+    controller_name = if !@controller[/controller/]
+      "#{@controller}_controller"
     else
-      @@logger.warn{"AGIRouter was asked to route a call to a nonexistant controller #{@controller}"}
-      agi.set_extension('i')
-      agi.set_priority('1')
+      "#{@controller}"
     end
+
+    controller_name = controller_name.classify
+    controller      = get_controller(controller_name)
+
+    @@logger.info "Processing Route to #{@controller}##{@method}"
+    @@logger.info "#{@uri}"
+
+    unless controller
+      @@logger.warn("Nonexistant controller")
+      return set_invalid_extension(agi)
+    end
+
+    unless check_controller(controller)
+      @@logger.warn "Unroutable method"
+      return set_invalid_extension(agi)
+    end
+
+    unless check_route(controller, @method)
+       @@logger.warn "Unroutable method"
+       return set_invalid_extension(agi)
+    end
+
+    ctrl_instance = controller.new({
+      :agi     => agi,
+      :params  => params,
+      :request => request
+    })
+
+    begin
+      ctrl_instance.run_filter_chain :before
+      ctrl_instance.method(@method).call()
+      ctrl_instance.run_filter_chain :after
+
+    rescue AGIFilterHalt => e
+      LOGGER.warn e.message
+    end
+  end
+
+
+  def set_invalid_extension(agi)
+    agi.set_extension('i')
+    agi.set_priority('1')
   end
 
   private
@@ -89,6 +117,7 @@ class AGIRouter
     return nil if uri_path.nil?
     result = uri_path.split('/')[1,3]
   end
+
   def parse_query(uri_query)
     return nil if uri_query.nil?
     options = {}
@@ -99,10 +128,9 @@ class AGIRouter
 
   def get_controller(requested_controller)
     begin
-      return Module.const_get(requested_controller)
+      Module.const_get(requested_controller)
     rescue NameError
-      # NameError when requested_controller doesn't exist as a class
-      return nil
+      nil
     end
   end
 
@@ -110,14 +138,14 @@ class AGIRouter
     while candidate_controller = candidate_controller.superclass do
       return true if candidate_controller == AGIRoute
     end
-    return nil
+    nil
   end
 
   def check_route(controller, requested_method)
     if controller.public_method_defined?(requested_method)
-      return true
+      true
     else
-      return false
+      false
     end
   end
 end
