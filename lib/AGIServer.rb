@@ -57,11 +57,6 @@ class AGIServer
   end
   #call-seq:
   # run()
-  # run() { |agi| block }
-  # run() { |agi,params| block }
-  #
-  #Starts the server to run. If a block is provided, the block will be run by all workers to handle connections. If a block is not provided, will attempt to route calls to public methods of AGIRoute objects.
-  #
   #1. Listener Thread: The Listener Thread is the simplest of the Threads. It accepts client sockets from the main socket, and enqueues those client sockets into the worker_queue.
   #2. Worker Threads: The Worker Thread is also fairly simple. It loops jobs_per_worker times, and each time, dequeues from the worker_queue. If the result is nil, it exits, otherwise, it interacts with the client socket, either yielding to the aforementioned supplied block or routing to the AGIRoutes. If a Worker Thread is instantiated, it will continue to process requests until it processes jobs_per_worker jobs or the server is stopped.
   #3. Monitor Thread: The Monitor Thread is the most complex of the threads at use. It instantiates Worker Threads if at any time it detects that there are fewer workers than min_workers, and if at any time it detects that the worker_queue length is greater than zero while there are fewer than max_workers.
@@ -69,6 +64,7 @@ class AGIServer
     @logger.info "Initializing Monitor Thread"
 
     @monitor = Thread.new do
+
       poll = 0
       while ! @shutdown do
         poll += 1
@@ -78,50 +74,28 @@ class AGIServer
           next
         end
 
-
-
         worker_check = (@workers.length < @max_workers)
-
-
         if worker_check || @workers.length < @min_workers
           @logger.info "Starting worker thread to handle requests"
 
           #Begin Worker Thread
+          @client = @worker_queue.deq
+          if @client
+            worker = AGIWorker.new({
+              :client => @client,
+              :params => @params,
+              :logger => @logger
+            })
 
-          pid = Process.fork {
-            $0 = "#{$0} Worker"
-
-            client = @worker_queue.deq
-            return if client.nil?
-
-            @logger.debug "Worker received Connection"
-            agi = AGI.new({ :input => client, :output => client, :logger => @logger })
-            begin
-              agi.init
-              params = @params
-              if block.nil?
-                router = AGIRouter.new(agi.channel_params['request'])
-                router.route(agi, params)
-              else
-                if block.arity == 2
-                  yield(agi, params)
-                elsif block.arity == 1
-                  yield(agi)
-                end
+            worker_pid = worker.run(lambda {
+              @workers.delete_if do |pid|
+                pid >= Process.pid
               end
-            rescue AGIHangupError => error
-              @logger.error "Worker caught unhandled hangup: #{error}"
-            rescue AGIError,Exception => error
-              @logger.error "Caught unhandled exception: #{error.class} #{error}"
-              @logger.error error.backtrace.join("\n")
-            ensure
-              client.close
-              @logger.debug "Worker done with Connection"
-            end
+            })
 
-            @logger.info "Worker handled last Connection, terminating"
-          } # Process.fork
-          @workers << pid
+            @workers << worker_pid
+          end
+
 
           next #Short Circuit back without a sleep in case we need more threads for load
         end
@@ -130,10 +104,11 @@ class AGIServer
         end
         sleep 1
       end
-      @logger.debug{"AGIServer Signaling all Worker Threads to finish up and exit"}
+
+      @logger.debug{"Signaling all Worker Threads to finish up and exit"}
       @workers.length.times{ @worker_queue.enq(nil) }
       @workers.each { |worker| worker.join }
-      @logger.debug{"AGIServer Final Worker Thread closed"}
+      @logger.debug{"Final Worker Thread closed"}
     end
 
     @logger.info{"AGIServer Initializing Listener Thread"}
