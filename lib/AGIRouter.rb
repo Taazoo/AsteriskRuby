@@ -72,7 +72,7 @@ class AGIRouter
     controller_name = controller_name.classify
     controller      = get_controller(controller_name)
 
-    @@logger.info "Processing Route to #{@controller}##{@method}"
+    @@logger.info "Processing Route to #{@controller_name}##{@method}"
     @@logger.info "#{@uri}"
 
     unless controller
