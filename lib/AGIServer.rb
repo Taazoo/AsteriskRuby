@@ -81,15 +81,19 @@ class AGIServer
           #Begin Worker Thread
           @client = @worker_queue.deq
           if @client
-            Thread.new do
-              worker = AGIWorker.new({
-                :client => @client,
-                :params => @params,
-                :logger => @logger
-              })
+            worker = AGIWorker.new({
+              :client => @client,
+              :params => @params,
+              :logger => @logger
+            })
 
-              worker.run
-            end
+            worker.run(lambda {
+              @client.close
+              @workers.delete_if do |pid|
+                pid >= Process.pid
+              end
+            })
+            @workers << worker_pid
           end
 
 
