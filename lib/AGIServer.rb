@@ -87,7 +87,6 @@ class AGIServer
               :logger => @logger
             })
 
-            worker_pid = worker.run(lambda {
               @workers.delete_if do |pid|
                 pid >= Process.pid
               end

@@ -47,7 +47,7 @@ require 'logger'
 #AGI is the Asterisk Gateway Interface, an interface for adding functionality to asterisk. This class implements an object that knows the AGI language and can therefore serve as a bridge between ruby and Asterisk. It can interact with any IO object it's given, so can be used in a sockets based FastAGI or a simple STDIN/STDOUT based Fork-Exec'd AGI. Please see {The Voip Info Asterisk AGI site}[http://www.voip-info.org/wiki-Asterisk+AGI] for more details.
 class AGI
 # Channel Parameters, populated by init
-  attr_reader :channel_params
+  attr_reader :channel_params, :channel
 # Additional AGI parameters provided to new
   attr_reader :init_params
 #Creates an AGI Object based on the provided Parameter Hash.
@@ -62,6 +62,7 @@ class AGI
     @logger = params[:logger] || Logger.new(STDERR)
     @init_params = params # To store other options for user
     @channel_params = {}
+    @channel = nil
     @last_response  = nil
     @initialized = false
   end
@@ -402,7 +403,7 @@ class AGI
 #Signals Asterisk to hangup the requested channel. If no channel is provided, defaults to the current channel.
 #
 #Returns an AGIResponse.
-  def hangup(channel=nil)
+  def exec_hangup(channel=nil)
     response = AGIResponse.new
     if channel.nil? then
       command_str = "HANGUP"
@@ -421,6 +422,10 @@ class AGI
     end
     return response
   end
+
+def hangup(channel=nil)
+  exec_hangup(channel)
+end
 
 #Initializes the channel by getting all variables provided by Asterisk as it initiates the connection. These values are then stored in the instance variable @channel_params, a Hash object. While initializing the channel, the IO object(s) provided to new as :input and :output are set to operate synchronously.
 #
@@ -443,6 +448,7 @@ class AGI
           @logger.debug{"AGI Got Channel Parameter #{$1} = #{$2}"}
         end
       end
+      @channel = @channel_params["channel"]
     rescue NoMethodError => error
       if error.to_s =~ %r{chomp} then
         raise AGIHangupError.new(nil, "Channel Hungup during init")
