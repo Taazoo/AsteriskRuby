@@ -29,16 +29,19 @@ class AGIWorker
 
       rescue AGIHangupError => error
         @logger.error "Worker caught unhandled hangup: #{error}"
+        @agi.hangup
       rescue AGIError,Exception => error
         @logger.error "Caught unhandled exception: #{error.class} #{error}"
         @logger.error error.backtrace.join("\n")
+        @agi.hangup
       ensure
         @client.close
         @logger.debug "Worker done with Connection"
       end
-
       @logger.info "Worker handled last Connection, terminating"
       after_run.call
+
+
 
     } # Process.fork
   end

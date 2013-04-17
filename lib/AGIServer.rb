@@ -88,6 +88,7 @@ class AGIServer
             })
 
             worker.run(lambda {
+              @client.close
               @workers.delete_if do |pid|
                 pid >= Process.pid
               end
