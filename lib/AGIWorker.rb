@@ -31,5 +31,6 @@ class AGIWorker
         @logger.debug "Worker done with Connection"
       end
       @logger.info "Worker handled last Connection, terminating"
+    } # Thread.new
   end
 end
