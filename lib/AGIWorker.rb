@@ -7,9 +7,7 @@ class AGIWorker
   end
 
 
-  def run(after_run)
-
-    Process.fork {
+  def run
       $0 = "#{$0} Worker"
 
       Process.exit! if @client.nil?
@@ -23,25 +21,16 @@ class AGIWorker
 
       begin
         @agi.init
-
         router = AGIRouter.new(@agi.channel_params['request'])
         router.route(@agi, @params)
-
       rescue AGIHangupError => error
         @logger.error "Worker caught unhandled hangup: #{error}"
-        @agi.hangup
       rescue AGIError,Exception => error
         @logger.error "Caught unhandled exception: #{error.class} #{error}"
-        @agi.hangup
       ensure
-        @client.close
         @logger.debug "Worker done with Connection"
       end
       @logger.info "Worker handled last Connection, terminating"
-      after_run.call
-
-
-
-    } # Process.fork
+    } # Thread.new
   end
 end
