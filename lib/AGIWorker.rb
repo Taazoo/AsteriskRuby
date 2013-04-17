@@ -32,7 +32,6 @@ class AGIWorker
         @agi.hangup
       rescue AGIError,Exception => error
         @logger.error "Caught unhandled exception: #{error.class} #{error}"
-        @logger.error error.backtrace.join("\n")
         @agi.hangup
       ensure
         @client.close
