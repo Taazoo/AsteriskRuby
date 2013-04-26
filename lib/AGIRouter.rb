@@ -53,7 +53,8 @@ class AGIRouter
     @@logger = logger
   end
 
-  #Takes an agi, and an optional parameters hash, and attempts to route to the requested method. If the method does not exist or is private, uses the agi to change the channel extension to invalid and the priority to 1.
+  #Takes an agi, and an optional parameters hash, and attempts to route to the requested method.
+  #If the method does not exist or is private, uses the agi to change the channel extension to invalid and the priority to 1.
   def route(agi, params=nil)
     request = {
       :uri        => @uri,
@@ -100,7 +101,6 @@ class AGIRouter
       ctrl_instance.run_filter_chain :before
       ctrl_instance.method(@method).call()
       ctrl_instance.run_filter_chain :after
-
     rescue AGIFilterHalt => e
       LOGGER.warn e.message
     end
@@ -128,7 +128,7 @@ class AGIRouter
 
   def get_controller(requested_controller)
     begin
-      Module.const_get(requested_controller)
+      Object.const_get(requested_controller)
     rescue NameError
       nil
     end

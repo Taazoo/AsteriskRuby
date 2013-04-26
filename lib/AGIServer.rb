@@ -78,25 +78,20 @@ class AGIServer
         if worker_check || @workers.length < @min_workers
           @logger.info "Starting worker thread to handle requests"
 
-          #Begin Worker Thread
-          @client = @worker_queue.deq
-          if @client
-            worker = AGIWorker.new({
-              :client => @client,
-              :params => @params,
-              :logger => @logger
-            })
-
-            worker.run(lambda {
-              @client.close
-              @workers.delete_if do |pid|
-                pid >= Process.pid
-              end
-            })
-            @workers << worker_pid
+          worker_thread = Thread.new do
+            #Begin Worker Thread
+            @client = @worker_queue.deq
+            if @client
+              worker = AGIWorker.new({
+                :client => @client,
+                :params => @params,
+                :logger => @logger
+              })
+              worker.run
+            end
           end
 
-
+          @workers << worker_thread
           next #Short Circuit back without a sleep in case we need more threads for load
         end
         if @stats && (poll % 10).zero?
