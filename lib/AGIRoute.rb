@@ -52,7 +52,7 @@ class AGIRoute
       filter_chain(:before).push method_sym
     end
 
-    def after_filter
+    def after_filter(method_sym)
       filter_chain(:after).push method_sym
     end
 
