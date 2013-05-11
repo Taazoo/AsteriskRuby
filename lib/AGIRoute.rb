@@ -37,10 +37,6 @@ class AGIRoute
 
   class << self
 
-    def initialize_filter_chain(filter_method)
-
-    end
-
     def filter_chain(filter_method)
       chain  = filter_method.to_sym
       @filter_chain        ||= {}
@@ -52,7 +48,7 @@ class AGIRoute
       filter_chain(:before).push method_sym
     end
 
-    def after_filter(method_sym)
+    def after_filter(method)
       filter_chain(:after).push method_sym
     end
 
