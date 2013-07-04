@@ -64,6 +64,8 @@ class AGIRouter
       :options    => @options
     }
 
+    return if !@controller
+
     controller_name = if !@controller[/controller/]
       "#{@controller}_controller"
     else
